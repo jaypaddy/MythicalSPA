@@ -35,7 +35,7 @@
             <button id="GetSalesAPIBearer" onclick="getsalesapibearer()">GetSalesAPIBearer</button>
         </div>
         <div class="rightContainer">
-            <pre id="memberofjson"></pre>
+            <pre id="salesapibearertoken" wrap></pre>
         </div>
     </div>
 <script>
@@ -114,7 +114,9 @@
     function getsalesapibearer(){
        // groupMemberId.groupIds.push(groupId.value);
        acquireTokenPopupAndCallSalesAPI();
-       console.log("Bearer:",bearerToken )
+       console.log("Sales API Bearer:",salesAPIBearerToken )
+       document.getElementById("salesapibearertoken").innerHTML = salesAPIBearerToken;
+       
         var body = JSON.stringify(groupMemberId);
         //callMSGraphPOST2("POST","http://localhost:8080/authenticated",bearerToken, body, graphAPIMemberOfCallback);
     }
@@ -148,7 +150,7 @@
         myMSALObj.acquireTokenSilent(requestSalesObj).then(function (tokenResponse) {
             salesAPIBearerToken = tokenResponse.accessToken;
             console.log("Bearer2:",salesAPIBearerToken);
-            callSalesAPI("GET", theUrl, accessToken, callback)
+            //callSalesAPI("GET", theUrl, accessToken, callback)
         }).catch(function (error) {
             console.log(error);
             // Upon acquireTokenSilent failure (due to consent or interaction or login required ONLY)
