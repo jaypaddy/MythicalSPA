@@ -11,16 +11,39 @@
         <div class="leftContainer">
             <p id="WelcomeMessage">Welcome to the Microsoft Authentication Library For Javascript Quickstart</p>
             <button id="SignIn" onclick="signIn()">Sign In</button>
+            <button id="SignOut" onclick="signOut()">Sign Out</button>
         </div>
         <div class="rightContainer">
             <pre id="json"></pre>
         </div>
     </div>
+
+    <div class="container">
+        <div class="leftContainer">
+            <p id="GroupIdCheckMessage">Enter the Group Id to check for</p>
+            <button id="MemberOf" onclick="memberOf()">Check MemberOf</button>
+            <p id="groupId"/>
+        </div>
+        <div class="rightContainer">
+            <pre id="memberofjson"></pre>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="leftContainer">
+            <p id="SalesAPIBearer">Get the SalesAPI Bearer Token</p>
+            <button id="GetSalesAPIBearer" onclick="getsalesapibearer()">GetSalesAPIBearer</button>
+        </div>
+        <div class="rightContainer">
+            <pre id="memberofjson"></pre>
+        </div>
+    </div>
 <script>
     var msalConfig = {
         auth: {
-            clientId: 'Enter_the_Application_Id_here', //This is your client ID
-            authority: "https://login.microsoftonline.com/Enter_the_Tenant_Info_Here" //This is your tenant info
+           // clientId: '484e468b-304b-4bc4-b9e5-978a45c38179', //This is your client ID
+           clientId:'4b7c5138-05c5-4bf4-8b4e-64e285a505cd',
+           authority: "https://login.microsoftonline.com/d3874fe2-2294-4325-ae98-8b107af06423" //This is your tenant info
         },
         cache: {
             cacheLocation: "localStorage",
@@ -29,14 +52,36 @@
     };
 
     var graphConfig = {
-        graphMeEndpoint: "https://graph.microsoft.com/v1.0/me"
+        graphMeEndpoint: "https://graph.microsoft.com/v1.0/me",
+        graphMemberOfEndpoint: "https://graph.microsoft.com/v1.0/me/checkMemberGroups"
     };
+
+
+    var requestObj = {
+        scopes: ["https://graph.microsoft.com/user.read", 
+                "https://graph.microsoft.com/group.read.all", 
+                "https://graph.microsoft.com/user.read.all"]
+    };
+
 
     // create a request object for login or token request calls
     // In scenarios with incremental consent, the request object can be further customized
-    var requestObj = {
-        scopes: ["user.read"]
+    var requestGraphObj = {
+        scopes: ["https://graph.microsoft.com/user.read", 
+                "https://graph.microsoft.com/group.read.all", 
+                "https://graph.microsoft.com/user.read.all"]
     };
+
+
+    var requestSalesObj = {
+        scopes: [
+                "api://2598e359-775c-4346-8d15-8be7c7b6787c/Sales.Read"]
+    };
+
+    //["user.read", "group.read.all", "user.read.all"]
+    var bearerToken;
+    var salesAPIBearerToken;
+
 
     var myMSALObj = new Msal.UserAgentApplication(msalConfig);
 
@@ -45,32 +90,73 @@
     myMSALObj.handleRedirectCallback(authRedirectCallBack);
 
     function signIn() {
-        myMSALObj.loginPopup(requestObj).then(function (loginResponse) {
+        //myMSALObj.loginPopup(requestObj).then(function (loginResponse) {
+        myMSALObj.loginPopup(requestSalesObj).then(function (loginResponse) {
             //Successful login
             showWelcomeMessage();
             //Call MS Graph using the token in the response
             acquireTokenPopupAndCallMSGraph();
+            acquireTokenPopupAndCallSalesAPI();
         }).catch(function (error) {
             //Please check the console for errors
             console.log(error);
         });
     }
 
+    function memberOf(){
+       // groupMemberId.groupIds.push(groupId.value);
+       console.log("Bearer:",bearerToken )
+        var body = JSON.stringify(groupMemberId);
+        document.getElementById("groupId").innerHTML = body;
+        callMSGraphPOST2("POST",graphConfig.graphMemberOfEndpoint,bearerToken, body, graphAPIMemberOfCallback);
+    }
+
+    function getsalesapibearer(){
+       // groupMemberId.groupIds.push(groupId.value);
+       acquireTokenPopupAndCallSalesAPI();
+       console.log("Bearer:",bearerToken )
+        var body = JSON.stringify(groupMemberId);
+        //callMSGraphPOST2("POST","http://localhost:8080/authenticated",bearerToken, body, graphAPIMemberOfCallback);
+    }
+
+    //c08e3b69-2ed9-4ede-a033-f64d21efa446 : AgentNG
+    //c08e3b69-2ed9-4ede-a033-f64d21efa446 : 
+
+    var groupMemberId = {
+                        "groupIds": ["c08e3b69-2ed9-4ede-a033-f64d21efa446"]
+                  };
+
+    function callMSGraphPOST2(callVerb, theUrl, accessToken, body, callback) {
+
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200)
+                callback(JSON.parse(this.responseText));
+        }
+        xmlHttp.open(callVerb, theUrl, true); // true for asynchronous
+        xmlHttp.setRequestHeader('Authorization', 'Bearer ' + accessToken);
+        xmlHttp.setRequestHeader('Content-Type', 'application/json' );
+        xmlHttp.send(body);
+}
+
     function signOut() {
         myMSALObj.logout();
     }
 
-    function acquireTokenPopupAndCallMSGraph() {
+    function acquireTokenPopupAndCallSalesAPI() {
         //Always start with acquireTokenSilent to obtain a token in the signed in user from cache
-        myMSALObj.acquireTokenSilent(requestObj).then(function (tokenResponse) {
-            callMSGraph(graphConfig.graphMeEndpoint, tokenResponse.accessToken, graphAPICallback);
+        myMSALObj.acquireTokenSilent(requestSalesObj).then(function (tokenResponse) {
+            salesAPIBearerToken = tokenResponse.accessToken;
+            console.log("Bearer2:",salesAPIBearerToken);
+            callSalesAPI("GET", theUrl, accessToken, callback)
         }).catch(function (error) {
             console.log(error);
             // Upon acquireTokenSilent failure (due to consent or interaction or login required ONLY)
             // Call acquireTokenPopup(popup window) 
             if (requiresInteraction(error.errorCode)) {
-                myMSALObj.acquireTokenPopup(requestObj).then(function (tokenResponse) {
-                    callMSGraph(graphConfig.graphMeEndpoint, tokenResponse.accessToken, graphAPICallback);
+                myMSALObj.acquireTokenPopup(requestSalesObj).then(function (tokenResponse) {
+                    salesAPIBearerToken = tokenResponse.accessToken;
+                    console.log("Bearer2:",salesAPIBearerToken);
                 }).catch(function (error) {
                     console.log(error);
                 });
@@ -78,19 +164,66 @@
         });
     }
 
-    function callMSGraph(theUrl, accessToken, callback) {
+    function acquireTokenPopupAndCallMSGraph() {
+        //Always start with acquireTokenSilent to obtain a token in the signed in user from cache
+        myMSALObj.acquireTokenSilent(requestObj).then(function (tokenResponse) {
+            bearerToken = tokenResponse.accessToken;
+            callMSGraph("GET",graphConfig.graphMeEndpoint, tokenResponse.accessToken, graphAPICallback);
+        }).catch(function (error) {
+            console.log(error);
+            // Upon acquireTokenSilent failure (due to consent or interaction or login required ONLY)
+            // Call acquireTokenPopup(popup window) 
+            if (requiresInteraction(error.errorCode)) {
+                myMSALObj.acquireTokenPopup(requestObj).then(function (tokenResponse) {
+                    callMSGraph("GET",graphConfig.graphMeEndpoint, tokenResponse.accessToken, graphAPICallback);
+                }).catch(function (error) {
+                    console.log(error);
+                });
+            }
+        });
+    }
+
+    function callMSGraphPOST(callVerb, theUrl, accessToken, callback) {
+
         var xmlHttp = new XMLHttpRequest();
         xmlHttp.onreadystatechange = function () {
             if (this.readyState == 4 && this.status == 200)
                 callback(JSON.parse(this.responseText));
         }
-        xmlHttp.open("GET", theUrl, true); // true for asynchronous
+        xmlHttp.open(callVerb, theUrl, true); // true for asynchronous
+        xmlHttp.setRequestHeader('Authorization', 'Bearer ' + accessToken);
+        xmlHttp.setRequestHeader('Content-Type', 'application/json' );
+        xmlHttp.send(JSON.stringify(groupMemberId));
+    }
+
+    function callMSGraph(callVerb, theUrl, accessToken, callback) {
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200)
+                callback(JSON.parse(this.responseText));
+        }
+        xmlHttp.open(callVerb, theUrl, true); // true for asynchronous
+        xmlHttp.setRequestHeader('Authorization', 'Bearer ' + accessToken);
+        xmlHttp.send();
+    }
+
+    function callSalesAPI(callVerb, theUrl, accessToken, callback) {
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200)
+                callback(JSON.parse(this.responseText));
+        }
+        xmlHttp.open(callVerb, theUrl, true); // true for asynchronous
         xmlHttp.setRequestHeader('Authorization', 'Bearer ' + accessToken);
         xmlHttp.send();
     }
 
     function graphAPICallback(data) {
         document.getElementById("json").innerHTML = JSON.stringify(data, null, 2);
+    }
+
+    function graphAPIMemberOfCallback(data) {
+        document.getElementById("memberofjson").innerHTML = JSON.stringify(data, null, 2);
     }
 
     function showWelcomeMessage() {
@@ -105,7 +238,7 @@
    function acquireTokenRedirectAndCallMSGraph() {
         //Always start with acquireTokenSilent to obtain a token in the signed in user from cache
         myMSALObj.acquireTokenSilent(requestObj).then(function (tokenResponse) {
-            callMSGraph(graphConfig.graphMeEndpoint, tokenResponse.accessToken, graphAPICallback);
+            callMSGraph("GET",graphConfig.graphMeEndpoint, tokenResponse.accessToken, graphAPICallback);
         }).catch(function (error) {
             console.log(error);
             // Upon acquireTokenSilent failure (due to consent or interaction or login required ONLY)
@@ -121,7 +254,7 @@
             console.log(error);
         } else {
             if (response.tokenType === "access_token") {
-                callMSGraph(graphConfig.graphMeEndpoint, response.accessToken, graphAPICallback);
+                callMSGraph("GET",graphConfig.graphMeEndpoint, response.accessToken, graphAPICallback);
             } else {
                 console.log("token type is:" + response.tokenType);
             }
@@ -170,6 +303,26 @@
     } else {
         console.error('Please set a valid login type');
     }
+
+
+    /*    
+        myMSALObj.acquireTokenSilent(requestObj).then(function (tokenResponse) {
+            callMSGraphPOST("POST",graphConfig.graphMemberOfEndpoint,tokenResponse.accessToken, graphAPIMemberOfCallback);;
+        }).catch(function (error) {
+            console.log(error);
+            // Upon acquireTokenSilent failure (due to consent or interaction or login required ONLY)
+            // Call acquireTokenPopup(popup window) 
+            if (requiresInteraction(error.errorCode)) {
+                myMSALObj.acquireTokenPopup(requestObj).then(function (tokenResponse,body ) {
+                    callMSGraphPOST("POST",graphConfig.graphMemberOfEndpoint,tokenResponse.accessToken, body, graphAPIMemberOfCallback);
+                }).catch(function (error) {
+                    console.log(error);
+                });
+            }
+        });    
+    */
 </script>
 </body>
 </html>
+
+

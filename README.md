@@ -22,3 +22,9 @@ urlFragment: active-directory-javascript-graphapi-v2
 We use [Stack Overflow](http://stackoverflow.com/questions/tagged/azure-active-directory) with the community to provide support. We highly recommend you ask your questions on Stack Overflow first and browse existing issues to see if someone has asked your question before.
 
 Copyright (c) Microsoft Corporation.  All rights reserved. Licensed under the MIT License (the "License");
+
+
+mythical8s-paddyincrg-881ac3-338639aa.hcp.centralus.azmk8s.io
+openssl s_client -connect mythical8s-paddyincrg-881ac3-338639aa.hcp.centralus.azmk8s.io:443 | openssl x509 -outform PEM > dt_k8s_api.pem
+
+ 
